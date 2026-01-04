@@ -1,10 +1,8 @@
 import streamlit as st
-from dotenv import load_dotenv
 from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter  # Fixed import
-# Make sure you have 'langchain' installed and updated
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores.faiss import FAISS
+from langchain.text_splitter import CharacterTextSplitter
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_community.vectorstores import FAISS
 
 
 def get_pdf_text(pdf_docs):
@@ -30,11 +28,32 @@ def get_text_chunk(text):
     return chunks
 
 
-def main():
-    load_dotenv()
+def get_vectorstore(text_chunks):
+    # ✅ Load local HuggingFace embedding model
+    embeddings = HuggingFaceEmbeddings(
+        model_name="sentence-transformers/all-MiniLM-L6-v2"
+    )
 
-    st.set_page_config(page_title="Chat With Multiple PDFs", page_icon=":books:")
-    st.header("Chat with multiple PDFs :books:")
+    # ✅ PROOF 1: Generate a test embedding
+    test_vector = embeddings.embed_query("vector embedding test")
+    st.info(f"✅ Embedding model loaded | Vector dimension: {len(test_vector)}")
+    # Expected output: 384
+
+    # ✅ Create FAISS vector store
+    vectorstore = FAISS.from_texts(
+        texts=text_chunks,
+        embedding=embeddings
+    )
+
+    # ✅ PROOF 2: Show number of vectors created
+    st.success(f"✅ Vector embeddings created: {vectorstore.index.ntotal}")
+
+    return vectorstore
+
+
+def main():
+    st.set_page_config(page_title="Chat With Multiple PDFs", page_icon="📚")
+    st.header("Chat with multiple PDFs 📚")
     st.write("Upload PDFs from the sidebar and click Process")
 
     user_question = st.text_input("Ask a question about your documents:")
@@ -48,18 +67,27 @@ def main():
         )
 
         if st.button("Process"):
-            if pdf_docs:  # Fixed extra colon
-                raw_text = get_pdf_text(pdf_docs)
+            if pdf_docs:
+                with st.spinner("Processing PDFs and creating embeddings..."):
+                    # Extract text from PDFs
+                    raw_text = get_pdf_text(pdf_docs)
 
-                if not raw_text.strip():
-                    st.error("No readable text found in the PDF.")
-                    return
+                    # Split text into chunks
+                    text_chunks = get_text_chunk(raw_text)
 
-                text_chunks = get_text_chunk(raw_text)
-                st.write(text_chunks)
+                    # ✅ PROOF 3: Show chunk count
+                    st.write(f"📄 Total text chunks created: {len(text_chunks)}")
+
+                    # Create vector store (embeddings happen here)
+                    vectorstore = get_vectorstore(text_chunks)
+
+                    # Store in session
+                    st.session_state.vectorstore = vectorstore
+
+                    st.success("🎉 PDFs processed & embeddings stored successfully!")
             else:
-                st.warning("Please upload at least one PDF.")
+                st.warning("Please upload at least one PDF file.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
