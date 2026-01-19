@@ -10,7 +10,7 @@ The **MultiPDF Chat App** is a Python-based application that allows users to **i
 
 ## 🏗️ Project Architecture
 
-![Project Architecture](C:\Users\pawar\Desktop\Multiple_PDF_Chat\PDF-LangChain.jpg)
+![Project Architecture](PDF-LangChain.jpg)
 
 **Architecture Explanation:**
 
